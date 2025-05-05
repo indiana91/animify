@@ -1,68 +1,17 @@
 import express, { Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import session from "express-session";
 import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import bcrypt from "bcrypt";
 import { z } from "zod";
 import { insertUserSchema, insertAnimationSchema } from "@shared/schema";
 import { authService } from "./services/auth";
 import { animationService } from "./services/animation";
 import { WebSocketServer } from "ws";
-
-// Session store setup
-import MemoryStore from "memorystore";
-const MemoryStoreSession = MemoryStore(session);
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: express.Express): Promise<Server> {
-  // Set up session middleware
-  app.use(
-    session({
-      store: new MemoryStoreSession({
-        checkPeriod: 86400000, // prune expired entries every 24h
-      }),
-      secret: process.env.SESSION_SECRET || "animation-generator-session-secret",
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
-      },
-    })
-  );
-
-  // Set up passport
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  // Configure passport local strategy
-  passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      try {
-        const user = await authService.validateUser(username, password);
-        if (!user) {
-          return done(null, false, { message: "Invalid username or password" });
-        }
-        return done(null, user);
-      } catch (error) {
-        return done(error);
-      }
-    })
-  );
-
-  passport.serializeUser((user: any, done) => {
-    done(null, user.id);
-  });
-
-  passport.deserializeUser(async (id: number, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (error) {
-      done(error);
-    }
-  });
+  // Set up authentication with Passport.js
+  setupAuth(app);
 
   // Create HTTP server
   const httpServer = createServer(app);

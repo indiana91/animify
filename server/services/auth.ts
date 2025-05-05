@@ -31,6 +31,11 @@ class AuthService {
     
     return user;
   }
+  
+  async getUserById(id: number): Promise<User | null> {
+    const user = await storage.getUser(id);
+    return user || null;
+  }
 }
 
 export const authService = new AuthService();
