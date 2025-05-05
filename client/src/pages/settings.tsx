@@ -57,9 +57,16 @@ const aiModelFormSchema = z.object({
   }),
 });
 
+const apiKeysFormSchema = z.object({
+  openaiApiKey: z.string().optional(),
+  googleApiKey: z.string().optional(),
+  groqApiKey: z.string().optional(),
+});
+
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 type AppearanceFormValues = z.infer<typeof appearanceFormSchema>;
 type AIModelFormValues = z.infer<typeof aiModelFormSchema>;
+type ApiKeysFormValues = z.infer<typeof apiKeysFormSchema>;
 
 const Settings: React.FC = () => {
   const { user } = useAuth();
@@ -90,6 +97,47 @@ const Settings: React.FC = () => {
       defaultModel: "openai",
     },
   });
+  
+  // API Keys form
+  const apiKeysForm = useForm<ApiKeysFormValues>({
+    resolver: zodResolver(apiKeysFormSchema),
+    defaultValues: {
+      openaiApiKey: "",
+      googleApiKey: "",
+      groqApiKey: "",
+    },
+  });
+  
+  // Fetch user settings on component mount
+  React.useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings', {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error fetching settings: ${response.status}`);
+        }
+        
+        const settings = await response.json();
+        
+        // Set default AI model
+        if (settings.defaultAiModel) {
+          aiModelForm.setValue('defaultModel', settings.defaultAiModel);
+        }
+        
+        // We don't set API keys because the server only returns placeholders
+      } catch (error) {
+        console.error("Error fetching user settings:", error);
+      }
+    };
+    
+    fetchSettings();
+  }, [aiModelForm]);
   
   // Handle profile form submission
   function onProfileSubmit(data: ProfileFormValues) {
@@ -126,12 +174,58 @@ const Settings: React.FC = () => {
   
   // Handle AI model form submission
   function onAIModelSubmit(data: AIModelFormValues) {
+    // Save to server with current API keys
+    saveSettings({ 
+      defaultAiModel: data.defaultModel,
+    });
+    
     toast({
       title: "AI Model preference updated",
       description: "Your default AI model has been set to " + 
         (data.defaultModel === 'openai' ? 'OpenAI GPT-4' : 
          data.defaultModel === 'gemini' ? 'Google Gemini' : 'Groq'),
     });
+  }
+  
+  // Handle API keys form submission
+  function onApiKeysSubmit(data: ApiKeysFormValues) {
+    // Save to server
+    saveSettings(data);
+    
+    toast({
+      title: "API Keys updated",
+      description: "Your custom API keys have been saved.",
+    });
+  }
+  
+  // Save settings to server
+  async function saveSettings(data: Partial<ApiKeysFormValues & { defaultAiModel?: string }>) {
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error saving settings: ${response.status}`);
+      }
+      
+      const settings = await response.json();
+      console.log("Settings saved:", settings);
+      
+    } catch (error) {
+      console.error("Error saving user settings:", error);
+      toast({
+        title: "Error saving settings",
+        description: "An error occurred while saving your settings. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
   
   return (
@@ -347,6 +441,90 @@ const Settings: React.FC = () => {
                       <Button type="submit">Save Preferences</Button>
                     </form>
                   </Form>
+                  
+                  <div className="mt-8">
+                    <h3 className="text-lg font-medium">API Keys</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Add your own API keys to use with the application.
+                    </p>
+                    <Separator className="my-4" />
+                    
+                    <Form {...apiKeysForm}>
+                      <form onSubmit={apiKeysForm.handleSubmit(onApiKeysSubmit)} className="space-y-4">
+                        <FormField
+                          control={apiKeysForm.control}
+                          name="openaiApiKey"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>OpenAI API Key</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="password" 
+                                  placeholder="sk-..." 
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Your OpenAI API key for using GPT-4. Starts with "sk-".
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={apiKeysForm.control}
+                          name="googleApiKey"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Google AI API Key</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="password" 
+                                  placeholder="API key for Gemini" 
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Your Google AI API key for using Gemini.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={apiKeysForm.control}
+                          name="groqApiKey"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Groq API Key</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="password" 
+                                  placeholder="gsk_..." 
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Your Groq API key. Starts with "gsk_".
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <Button type="submit">Save API Keys</Button>
+                      </form>
+                    </Form>
+                    
+                    <div className="mt-6 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 text-sm text-yellow-800 dark:text-yellow-300">
+                      <p className="font-medium">Important Note</p>
+                      <p className="mt-1">
+                        Your API keys are stored securely and are only used for generating animations. We never share or use your API keys for any other purpose.
+                      </p>
+                    </div>
+                  </div>
                   
                   <div className="mt-8">
                     <h3 className="text-lg font-medium">AI Model Information</h3>

@@ -285,5 +285,61 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
+  // User Settings API
+  app.get("/api/settings", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const userId = user.id;
+      const settings = await storage.getUserSettings(userId);
+      
+      if (!settings) {
+        return res.json({ 
+          userId,
+          defaultAiModel: "openai",
+          openaiApiKey: null,
+          googleApiKey: null,
+          groqApiKey: null,
+        });
+      }
+      
+      // Don't send the actual API keys, just indicate they exist
+      res.json({
+        ...settings,
+        openaiApiKey: settings.openaiApiKey ? "********" : null,
+        googleApiKey: settings.googleApiKey ? "********" : null,
+        groqApiKey: settings.groqApiKey ? "********" : null,
+      });
+    } catch (error) {
+      console.error("Error fetching user settings:", error);
+      res.status(500).json({ message: "Failed to fetch user settings" });
+    }
+  });
+  
+  app.post("/api/settings", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const userId = user.id;
+      const { openaiApiKey, googleApiKey, groqApiKey, defaultAiModel } = req.body;
+      
+      const updatedSettings = await storage.updateUserSettings(userId, {
+        openaiApiKey,
+        googleApiKey,
+        groqApiKey,
+        defaultAiModel,
+      });
+      
+      // Don't send the actual API keys, just indicate they exist
+      res.json({
+        ...updatedSettings,
+        openaiApiKey: updatedSettings?.openaiApiKey ? "********" : null,
+        googleApiKey: updatedSettings?.googleApiKey ? "********" : null,
+        groqApiKey: updatedSettings?.groqApiKey ? "********" : null,
+      });
+    } catch (error) {
+      console.error("Error updating user settings:", error);
+      res.status(500).json({ message: "Failed to update user settings" });
+    }
+  });
+
   return httpServer;
 }
