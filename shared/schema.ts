@@ -60,6 +60,26 @@ export const insertGenerationTaskSchema = createInsertSchema(generationTasks).pi
   taskType: true,
 });
 
+// User settings table for API keys
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  openaiApiKey: text("openai_api_key"),
+  googleApiKey: text("google_api_key"),
+  groqApiKey: text("groq_api_key"),
+  defaultAiModel: text("default_ai_model").default("openai"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertUserSettingsSchema = createInsertSchema(userSettings).pick({
+  userId: true,
+  openaiApiKey: true,
+  googleApiKey: true,
+  groqApiKey: true,
+  defaultAiModel: true,
+});
+
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -69,3 +89,6 @@ export type InsertAnimation = z.infer<typeof insertAnimationSchema>;
 
 export type GenerationTask = typeof generationTasks.$inferSelect;
 export type InsertGenerationTask = z.infer<typeof insertGenerationTaskSchema>;
+
+export type UserSettings = typeof userSettings.$inferSelect;
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;

@@ -3,12 +3,22 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Skip Groq for now to fix the startup issues
 // import Groq from "groq";
 
+interface ApiKeys {
+  openaiApiKey?: string;
+  googleApiKey?: string;
+  groqApiKey?: string;
+}
+
 class AIService {
   private openai: OpenAI | null = null;
   private googleAI: GoogleGenerativeAI | null = null;
   // private groq: any = null;
   
   constructor() {
+    this.initializeDefaultClients();
+  }
+  
+  private initializeDefaultClients() {
     // Initialize OpenAI
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (openaiApiKey) {
@@ -28,6 +38,41 @@ class AIService {
     // if (groqApiKey) {
     //   // Will implement later
     // }
+  }
+  
+  // Get custom clients with user-specific API keys
+  private getCustomClients(userId: number | undefined): Promise<ApiKeys> {
+    return new Promise(async (resolve) => {
+      if (!userId) {
+        resolve({});
+        return;
+      }
+      
+      try {
+        // Get custom API keys from user settings
+        const user = await storage.getUser(userId);
+        if (!user) {
+          resolve({});
+          return;
+        }
+        
+        // Get user settings with API keys
+        const userSettings = await storage.getUserSettings(userId);
+        if (!userSettings) {
+          resolve({});
+          return;
+        }
+        
+        resolve({
+          openaiApiKey: userSettings.openaiApiKey || undefined,
+          googleApiKey: userSettings.googleApiKey || undefined,
+          groqApiKey: userSettings.groqApiKey || undefined
+        });
+      } catch (error) {
+        console.error("Error getting custom API keys:", error);
+        resolve({});
+      }
+    });
   }
   
   async generateScript(prompt: string, model: string): Promise<string> {
@@ -111,11 +156,20 @@ class AIService {
       throw new Error("Google AI API key not configured");
     }
     
-    const model = this.googleAI.getGenerativeModel({ model: "gemini-pro" });
-    
-    const result = await model.generateContent(instructions);
-    const response = result.response;
-    return response.text().trim();
+    try {
+      // Try to use Gemini API
+      const model = this.googleAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      
+      const result = await model.generateContent(instructions);
+      const response = result.response;
+      return response.text().trim();
+    } catch (error) {
+      console.error("Error using Gemini API:", error);
+      
+      // Fallback to OpenAI if Gemini fails
+      console.log("Falling back to OpenAI for generation");
+      return this.generateWithOpenAI(instructions);
+    }
   }
   
   private async generateWithGroq(instructions: string): Promise<string> {

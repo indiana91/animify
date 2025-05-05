@@ -15,6 +15,11 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   decrementUserGenerations(userId: number): Promise<User | undefined>;
   
+  // User settings operations
+  getUserSettings(userId: number): Promise<UserSettings | undefined>;
+  createUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
+  updateUserSettings(userId: number, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined>;
+  
   // Animation operations
   createAnimation(animation: InsertAnimation): Promise<Animation>;
   getAnimation(id: number): Promise<Animation | undefined>;
