@@ -73,20 +73,41 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess }) => {
   const onLoginSubmit = async (values: LoginFormValues) => {
     try {
       setIsSubmitting(true);
-      const response = await apiRequest('POST', '/api/auth/login', values);
-      const userData = await response.json();
+      console.log("Submitting login form:", values);
       
-      login(userData);
-      
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
-      });
-      
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        setLocation('/dashboard');
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || `Error: ${response.status}`);
+        }
+        
+        const userData = await response.json();
+        console.log("Login successful:", userData);
+        
+        login(userData);
+        
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully logged in.",
+        });
+        
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          setLocation('/dashboard');
+        }
+      } catch (error) {
+        console.error("Error during login:", error);
+        throw error;
       }
     } catch (error) {
       toast({
@@ -102,23 +123,44 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onSuccess }) => {
   const onSignupSubmit = async (values: SignupFormValues) => {
     try {
       setIsSubmitting(true);
+      console.log("Submitting signup form:", values);
+      
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...signupData } = values;
       
-      const response = await apiRequest('POST', '/api/auth/signup', signupData);
-      const userData = await response.json();
-      
-      login(userData);
-      
-      toast({
-        title: "Account created!",
-        description: "Your account has been created successfully.",
-      });
-      
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        setLocation('/dashboard');
+      try {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(signupData),
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || `Error: ${response.status}`);
+        }
+        
+        const userData = await response.json();
+        console.log("Signup successful:", userData);
+        
+        login(userData);
+        
+        toast({
+          title: "Account created!",
+          description: "Your account has been created successfully.",
+        });
+        
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          setLocation('/dashboard');
+        }
+      } catch (error) {
+        console.error("Error during signup:", error);
+        throw error;
       }
     } catch (error) {
       toast({
