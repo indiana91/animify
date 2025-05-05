@@ -49,6 +49,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Auth routes
   app.post("/api/auth/signup", async (req, res) => {
     try {
+      console.log("Signup request received:", req.body);
+      
       const validatedData = insertUserSchema
         .extend({
           email: z.string().email("Invalid email address"),
@@ -67,12 +69,15 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       }
 
       const user = await authService.registerUser(validatedData);
+      console.log("User created:", user.id, user.username);
       
       // Log the user in
       req.login(user, (err) => {
         if (err) {
+          console.error("Error logging in after registration:", err);
           return res.status(500).json({ message: "Error logging in after registration" });
         }
+        console.log("User logged in successfully after registration");
         return res.status(201).json({
           id: user.id,
           username: user.username,
@@ -82,7 +87,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
+        const errorMessage = error.errors.map(e => `${e.path}: ${e.message}`).join(", ");
+        console.error("Validation error:", errorMessage);
+        return res.status(400).json({ message: errorMessage });
       }
       console.error("Signup error:", error);
       res.status(500).json({ message: "Error creating user" });
@@ -90,17 +97,25 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   app.post("/api/auth/login", (req, res, next) => {
+    console.log("Login request received:", req.body);
+    
     passport.authenticate("local", (err, user, info) => {
       if (err) {
+        console.error("Login error:", err);
         return next(err);
       }
       if (!user) {
+        console.log("Authentication failed:", info?.message || "Unknown reason");
         return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
+      
+      console.log("User authenticated:", user.id, user.username);
       req.login(user, (err) => {
         if (err) {
+          console.error("Error during login session creation:", err);
           return next(err);
         }
+        console.log("User logged in successfully");
         return res.json({
           id: user.id,
           username: user.username,
@@ -120,8 +135,16 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     });
   });
 
-  app.get("/api/auth/user", isAuthenticated, (req, res) => {
+  app.get("/api/auth/user", (req, res) => {
+    console.log("User session check, authenticated:", req.isAuthenticated());
+    
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
     const user = req.user as any;
+    console.log("Current user:", user.id, user.username);
+    
     res.json({
       id: user.id,
       username: user.username,
