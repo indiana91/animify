@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 // Skip Groq for now to fix the startup issues
 // import Groq from "groq";
+import { storage } from "../storage";
 
 interface ApiKeys {
   openaiApiKey?: string;
@@ -75,7 +76,7 @@ class AIService {
     });
   }
   
-  async generateScript(prompt: string, model: string): Promise<string> {
+  async generateScript(prompt: string, model: string, userId?: number): Promise<string> {
     const instructions = `
       Generate a detailed scene description for an animation based on the following prompt.
       The scene description should include:
@@ -89,19 +90,22 @@ class AIService {
       Provide a structured, detailed scene description that could be used to create a Manim animation.
     `;
     
+    // Get any custom API keys for this user
+    const customKeys = await this.getCustomClients(userId);
+    
     switch (model) {
       case "openai":
-        return this.generateWithOpenAI(instructions);
+        return this.generateWithOpenAI(instructions, customKeys.openaiApiKey);
       case "gemini":
-        return this.generateWithGemini(instructions);
+        return this.generateWithGemini(instructions, customKeys.googleApiKey);
       case "groq":
-        return this.generateWithGroq(instructions);
+        return this.generateWithGroq(instructions, customKeys.groqApiKey);
       default:
         throw new Error(`Unknown AI model: ${model}`);
     }
   }
   
-  async generateManimCode(prompt: string, script: string, duration: number, model: string): Promise<string> {
+  async generateManimCode(prompt: string, script: string, duration: number, model: string, userId?: number): Promise<string> {
     const instructions = `
       Generate Manim Python code to create an animation based on the following prompt and script.
       The animation should be approximately ${duration} seconds long.
@@ -121,24 +125,36 @@ class AIService {
       Return only the Python code without any additional explanation.
     `;
     
+    // Get any custom API keys for this user
+    const customKeys = await this.getCustomClients(userId);
+    
     switch (model) {
       case "openai":
-        return this.generateWithOpenAI(instructions);
+        return this.generateWithOpenAI(instructions, customKeys.openaiApiKey);
       case "gemini":
-        return this.generateWithGemini(instructions);
+        return this.generateWithGemini(instructions, customKeys.googleApiKey);
       case "groq":
-        return this.generateWithGroq(instructions);
+        return this.generateWithGroq(instructions, customKeys.groqApiKey);
       default:
         throw new Error(`Unknown AI model: ${model}`);
     }
   }
   
-  private async generateWithOpenAI(instructions: string): Promise<string> {
-    if (!this.openai) {
+  private async generateWithOpenAI(instructions: string, customApiKey?: string): Promise<string> {
+    // Use custom API key if provided, otherwise use the default client
+    let openaiClient = this.openai;
+    
+    if (customApiKey) {
+      openaiClient = new OpenAI({
+        apiKey: customApiKey,
+      });
+    }
+    
+    if (!openaiClient) {
       throw new Error("OpenAI API key not configured");
     }
     
-    const response = await this.openai.chat.completions.create({
+    const response = await openaiClient.chat.completions.create({
       model: "gpt-4",
       messages: [
         { role: "system", content: "You are an expert in Manim animation programming." },
@@ -151,14 +167,21 @@ class AIService {
     return response.choices[0]?.message?.content?.trim() || "";
   }
   
-  private async generateWithGemini(instructions: string): Promise<string> {
-    if (!this.googleAI) {
+  private async generateWithGemini(instructions: string, customApiKey?: string): Promise<string> {
+    // Use custom API key if provided, otherwise use the default client
+    let googleClient = this.googleAI;
+    
+    if (customApiKey) {
+      googleClient = new GoogleGenerativeAI(customApiKey);
+    }
+    
+    if (!googleClient) {
       throw new Error("Google AI API key not configured");
     }
     
     try {
       // Try to use Gemini API
-      const model = this.googleAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const model = googleClient.getGenerativeModel({ model: "gemini-1.5-pro" });
       
       const result = await model.generateContent(instructions);
       const response = result.response;
@@ -172,7 +195,7 @@ class AIService {
     }
   }
   
-  private async generateWithGroq(instructions: string): Promise<string> {
+  private async generateWithGroq(instructions: string, customApiKey?: string): Promise<string> {
     // Temporarily use OpenAI as fallback since Groq is disabled
     return this.generateWithOpenAI(instructions);
     

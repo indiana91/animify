@@ -124,7 +124,7 @@ class AnimationService {
     
     try {
       // Generate script using AI service
-      const script = await aiService.generateScript(animation.prompt, aiModel);
+      const script = await aiService.generateScript(animation.prompt, aiModel, animation.userId);
       
       // Update animation with script
       await storage.updateAnimationScript(animationId, script);
@@ -192,7 +192,7 @@ class AnimationService {
     
     try {
       // Generate Manim code using AI service
-      const manimCode = await aiService.generateManimCode(animation.prompt, animation.script, animation.duration, aiModel);
+      const manimCode = await aiService.generateManimCode(animation.prompt, animation.script, animation.duration, aiModel, animation.userId);
       
       // Update animation with Manim code
       await storage.updateAnimationCode(animationId, manimCode);

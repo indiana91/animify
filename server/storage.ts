@@ -1,10 +1,11 @@
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import { 
-  users, animations, generationTasks, 
+  users, animations, generationTasks, userSettings,
   type User, type InsertUser, 
   type Animation, type InsertAnimation,
-  type GenerationTask, type InsertGenerationTask 
+  type GenerationTask, type InsertGenerationTask,
+  type UserSettings, type InsertUserSettings
 } from "@shared/schema";
 
 export interface IStorage {
@@ -77,6 +78,49 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedUser;
+  }
+  
+  // User settings operations
+  async getUserSettings(userId: number): Promise<UserSettings | undefined> {
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
+    return settings;
+  }
+  
+  async createUserSettings(settings: InsertUserSettings): Promise<UserSettings> {
+    const [newSettings] = await db
+      .insert(userSettings)
+      .values(settings)
+      .returning();
+    return newSettings;
+  }
+  
+  async updateUserSettings(userId: number, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
+    const [existingSettings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
+    
+    if (!existingSettings) {
+      // Create settings if they don't exist
+      return this.createUserSettings({
+        userId,
+        ...settings,
+      } as InsertUserSettings);
+    }
+    
+    const [updatedSettings] = await db
+      .update(userSettings)
+      .set({
+        ...settings,
+        updatedAt: new Date()
+      })
+      .where(eq(userSettings.userId, userId))
+      .returning();
+    
+    return updatedSettings;
   }
 
   // Animation operations
