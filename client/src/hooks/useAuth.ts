@@ -16,14 +16,17 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   
   // Fetch user data
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/auth/user'],
     enabled: true,
-    retry: false,
+    retry: 1,
+    retryDelay: 1000,
     onSuccess: (data) => {
+      console.log("User data retrieved successfully:", data);
       setUser(data);
     },
-    onError: () => {
+    onError: (error) => {
+      console.log("Error fetching user data:", error);
       setUser(null);
     },
   });
@@ -31,7 +34,12 @@ export const useAuth = () => {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (userData: User) => {
+      console.log("Setting user data in auth context:", userData);
       setUser(userData);
+      // Refetch current user data to ensure session is valid
+      setTimeout(() => {
+        refetch();
+      }, 500);
       return userData;
     },
   });
@@ -39,8 +47,17 @@ export const useAuth = () => {
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest('POST', '/api/auth/logout');
-      return response.json();
+      console.log("Logging out user");
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        return await response.json();
+      } catch (error) {
+        console.error("Error during logout:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       // Clear user from state
@@ -74,5 +91,6 @@ export const useAuth = () => {
     isAuthenticated,
     isLoading,
     error,
+    refetchUser: refetch,
   };
 };

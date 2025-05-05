@@ -27,11 +27,13 @@ export function setupAuth(app: Express) {
   
   const sessionOptions: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "manim-animation-generator-secret",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: 'lax',
     },
     store: new PgStore({
       pool,
@@ -39,6 +41,13 @@ export function setupAuth(app: Express) {
       createTableIfMissing: true,
     }),
   };
+  
+  console.log("Setting up session with options:", {
+    resave: true,
+    saveUninitialized: true,
+    cookieMaxAge: 30 * 24 * 60 * 60 * 1000,
+    cookieSecure: process.env.NODE_ENV === "production",
+  });
 
   // Set trust proxy if in production
   if (process.env.NODE_ENV === "production") {

@@ -72,18 +72,24 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       console.log("User created:", user.id, user.username);
       
       // Log the user in
-      req.login(user, (err) => {
+      return req.login(user, (err) => {
         if (err) {
           console.error("Error logging in after registration:", err);
           return res.status(500).json({ message: "Error logging in after registration" });
         }
+        
         console.log("User logged in successfully after registration");
-        return res.status(201).json({
+        console.log("Session details:", req.session);
+        
+        // Send back sanitized user data
+        const safeUser = {
           id: user.id,
           username: user.username,
           email: user.email,
           generationsRemaining: user.generationsRemaining,
-        });
+        };
+        
+        return res.status(201).json(safeUser);
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -110,18 +116,25 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       }
       
       console.log("User authenticated:", user.id, user.username);
-      req.login(user, (err) => {
+      
+      return req.login(user, (err) => {
         if (err) {
           console.error("Error during login session creation:", err);
           return next(err);
         }
+        
         console.log("User logged in successfully");
-        return res.json({
+        console.log("Session details:", req.session);
+        
+        // Send back sanitized user data
+        const safeUser = {
           id: user.id,
           username: user.username,
           email: user.email,
           generationsRemaining: user.generationsRemaining,
-        });
+        };
+        
+        return res.json(safeUser);
       });
     })(req, res, next);
   });
@@ -137,6 +150,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   app.get("/api/auth/user", (req, res) => {
     console.log("User session check, authenticated:", req.isAuthenticated());
+    console.log("Session ID:", req.sessionID);
+    console.log("Session content:", req.session);
     
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
