@@ -1,0 +1,143 @@
+# Animation Generator Project Structure
+
+## Repository Structure
+```
+animation-generator/
+├── frontend/                  # NextJS application
+│   ├── public/                # Static assets
+│   ├── src/
+│   │   ├── app/               # Next.js 13+ app router
+│   │   ├── components/        # Reusable UI components
+│   │   ├── hooks/             # Custom React hooks
+│   │   ├── lib/               # Utility functions
+│   │   ├── services/          # API service layers
+│   │   └── types/             # TypeScript type definitions
+│   ├── .env.local             # Environment variables
+│   └── package.json           # Frontend dependencies
+├── backend/                   # FastAPI application
+│   ├── app/
+│   │   ├── api/               # API routes
+│   │   │   ├── endpoints/     # API endpoint modules
+│   │   │   └── dependencies/  # Shared API dependencies
+│   │   ├── core/              # Core application modules
+│   │   │   ├── config.py      # Configuration settings
+│   │   │   └── security.py    # Security utilities
+│   │   ├── models/            # Data models
+│   │   ├── services/          # Business logic services
+│   │   │   ├── nlp/           # Natural language processing
+│   │   │   ├── script/        # Script generation
+│   │   │   └── animation/     # Animation generation
+│   │   ├── utils/             # Utility modules
+│   │   └── main.py            # Application entry point
+│   ├── requirements.txt       # Python dependencies
+│   └── Dockerfile             # Backend container definition
+├── manim_scripts/             # Generated Manim scripts
+├── output/                    # Generated animations
+├── docker-compose.yml         # Container orchestration
+└── README.md                  # Project documentation
+```
+
+## Key Components
+
+### Frontend Components
+
+1. **PromptInput**
+   - Text area for entering animation descriptions
+   - Submit button and optional parameters
+
+2. **ScriptViewer**
+   - Displays the generated script
+   - Optionally allows editing/refining
+
+3. **ProgressTracker**
+   - Shows real-time progress of script generation and rendering
+   - Status indicators for each pipeline stage
+
+4. **VideoPlayer**
+   - Displays the final animation
+   - Download options
+
+5. **Dashboard**
+   - History of past animation projects
+   - Saved animations
+
+### Backend Services
+
+1. **PromptProcessingService**
+   - Validates and enhances user prompts
+   - Extracts key animation requirements
+
+2. **ScriptGenerationService**
+   - Transforms processed prompts into detailed scripts
+   - Breaks down scripts into scene structures
+
+3. **CodeGenerationService**
+   - Converts scene structures into executable Manim code
+   - Handles imports, classes, animations, and timing
+
+4. **RenderingService**
+   - Executes Manim code in a controlled environment
+   - Manages rendering resources and timeouts
+   - Processes output files
+
+5. **StorageService**
+   - Handles temporary and persistent storage of:
+     - User prompts
+     - Generated scripts
+     - Manim Python files
+     - Generated animations
+
+6. **UserManagementService** (optional)
+   - Authentication and authorization
+   - User preferences and history
+
+## Data Models
+
+1. **AnimationProject**
+   ```python
+   class AnimationProject(BaseModel):
+       id: str
+       user_id: Optional[str]
+       prompt: str
+       script: Optional[str]
+       manim_code: Optional[str]
+       status: str  # PENDING, PROCESSING, COMPLETED, FAILED
+       created_at: datetime
+       updated_at: datetime
+       output_url: Optional[str]
+   ```
+
+2. **GenerationTask**
+   ```python
+   class GenerationTask(BaseModel):
+       id: str
+       project_id: str
+       task_type: str  # SCRIPT_GENERATION, CODE_GENERATION, RENDERING
+       status: str
+       created_at: datetime
+       started_at: Optional[datetime]
+       completed_at: Optional[datetime]
+       error: Optional[str]
+   ```
+
+## API Endpoints
+
+1. **Project Management**
+   - `POST /api/projects` - Create a new animation project
+   - `GET /api/projects` - List user's projects
+   - `GET /api/projects/{id}` - Get project details
+   - `DELETE /api/projects/{id}` - Delete a project
+
+2. **Animation Generation**
+   - `POST /api/projects/{id}/generate` - Start the generation pipeline
+   - `GET /api/projects/{id}/status` - Check generation status
+   - `GET /api/projects/{id}/output` - Get the generated animation
+
+3. **Script Management**
+   - `GET /api/projects/{id}/script` - Get the generated script
+   - `PUT /api/projects/{id}/script` - Update/refine the script
+
+## Authentication (Optional)
+
+- JWT-based authentication
+- API keys for service-to-service communication
