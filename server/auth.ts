@@ -29,11 +29,13 @@ export function setupAuth(app: Express) {
     secret: process.env.SESSION_SECRET || "manim-animation-generator-secret",
     resave: true,
     saveUninitialized: true,
+    name: "session.sid", // custom name to avoid conflicts
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // set to true in production with https
       httpOnly: true,
       sameSite: 'lax',
+      path: '/',
     },
     store: new PgStore({
       pool,

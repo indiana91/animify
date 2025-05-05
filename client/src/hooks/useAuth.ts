@@ -16,19 +16,46 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   
   // Fetch user data
-  const { data, isLoading, error, refetch } = useQuery({
+  const { 
+    data, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useQuery<User | null, Error>({
     queryKey: ['/api/auth/user'],
     enabled: true,
     retry: 1,
     retryDelay: 1000,
-    onSuccess: (data) => {
-      console.log("User data retrieved successfully:", data);
-      setUser(data);
-    },
-    onError: (error) => {
-      console.log("Error fetching user data:", error);
-      setUser(null);
-    },
+    gcTime: 0, // Don't cache
+    staleTime: 0, // Always refetch
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/auth/user', {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (response.status === 401) {
+          console.log("User not authenticated");
+          return null;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Error fetching user: ${response.status}`);
+        }
+        
+        const userData = await response.json();
+        console.log("User data retrieved successfully:", userData);
+        setUser(userData);
+        return userData;
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setUser(null);
+        throw error;
+      }
+    }
   });
   
   // Login mutation
