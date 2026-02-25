@@ -1,4 +1,5 @@
-# Manim Animation Generator
+# Manim Animation Engine
+
 
 A full-stack web application for generating [Manim](https://www.manim.community/) animations using multiple AI models, including OpenAI GPT, Google's Gemini, and Groq.
 
